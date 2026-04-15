@@ -1,0 +1,5 @@
+# Default: works everywhere (no Java). Includes Pandas + DuckDB "warehouse".
+-r requirements-core.txt
+
+# For Apache Spark (PySpark), also install:
+#   pip install -r requirements-spark.txt

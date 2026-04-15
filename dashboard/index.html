@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clickstream Analytics — Pipeline Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --surface: #141a24;
+      --surface2: #1c2433;
+      --border: #2a3548;
+      --text: #e8edf5;
+      --muted: #8b9bb8;
+      --accent: #3dd6c3;
+      --accent-dim: rgba(61, 214, 195, 0.15);
+      --warn: #f0b429;
+      --ok: #4ade80;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 3rem;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      max-width: 36rem;
+    }
+
+    .meta {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .meta strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Pipeline strip */
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 820px) {
+      .pipeline {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stage {
+      background: linear-gradient(165deg, var(--surface) 0%, var(--surface2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+
+    .stage.processing::before {
+      background: #7c9cff;
+    }
+
+    .stage.result::before {
+      background: #c084fc;
+    }
+
+    .stage-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .stage h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .stage ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .stage li {
+      margin-bottom: 0.25rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      font-family: "IBM Plex Mono", monospace;
+      margin-top: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .status-pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px var(--ok);
+    }
+
+    .status-pill.warn .dot {
+      background: var(--warn);
+      box-shadow: 0 0 8px var(--warn);
+    }
+
+    .arrows {
+      display: none;
+    }
+
+    @media (min-width: 821px) {
+      .pipeline-wrap {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        align-items: stretch;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .pipeline {
+        display: contents;
+      }
+
+      .arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 1.25rem;
+        user-select: none;
+      }
+    }
+
+    /* KPI grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+    }
+
+    .kpi .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .kpi .value {
+      font-size: 1.35rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi .delta {
+      font-size: 0.72rem;
+      color: var(--ok);
+      margin-top: 0.2rem;
+    }
+
+    .kpi .delta.down {
+      color: var(--danger);
+    }
+
+    /* Chart */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .panel-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+    }
+
+    button.btn {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button.btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 140px;
+      padding-top: 0.5rem;
+    }
+
+    .bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bar {
+      width: 100%;
+      max-width: 48px;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(180deg, var(--accent) 0%, #1a6b62 100%);
+      min-height: 4px;
+      transition: height 0.35s ease;
+    }
+
+    .bar-col span {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    .badge.ok {
+      background: rgba(74, 222, 128, 0.15);
+      color: var(--ok);
+    }
+
+    .badge.run {
+      background: rgba(124, 156, 255, 0.15);
+      color: #93b4ff;
+    }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Clickstream Analytics — Pipeline Console</h1>
+        <p>
+          DSC3219 design UI: mock operations view for the distributed pipeline (S3 → EMR Spark → curated Parquet → Redshift / BI).
+          Metrics are simulated for demonstration.
+        </p>
+      </div>
+      <div class="meta">
+        <div>Environment: <strong>design-preview</strong></div>
+        <div>Last sync: <strong id="clock">—</strong></div>
+      </div>
+    </header>
+
+    <div class="pipeline-wrap">
+      <section class="stage input" aria-labelledby="stage-input">
+        <div class="stage-label" id="stage-input">Stage 1</div>
+        <h3>Input</h3>
+        <ul>
+          <li>Amazon S3 raw zone</li>
+          <li><code>raw/year=/month=/day=</code></li>
+          <li>Immutable, versioned uploads</li>
+        </ul>
+        <div class="status-pill" id="pill-input">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="text-input">Receiving</span>
+        </div>
+      </section>
+      <div class="arrow" aria-hidden="true">→</div>
+      <section class="stage processing" aria-labelledby="stage-proc">
+        <div class="stage-label" id="stage-proc">Stage 2</div>
+        <h3>Processing</h3>
+        <ul>
+          <li>EventBridge → Lambda → EMR Step</li>
+          <li>Spark MapReduce on EMR</li>
+          <li>Validate, aggregate, parallel workers</li>
+        </ul>
+        <div class="status-pill" id="pill-proc">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="text-proc">Idle</span>
+        </div>
+      </section>
+      <div class="arrow" aria-hidden="true">→</div>
+      <section class="stage result" aria-labelledby="stage-res">
+        <div class="stage-label" id="stage-res">Stage 3</div>
+        <h3>Result store</h3>
+        <ul>
+          <li>S3 curated Parquet</li>
+          <li>Redshift analytics tables</li>
+          <li>BI / SQL consumers</li>
+        </ul>
+        <div class="status-pill" id="pill-res">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="text-res">Ready</span>
+        </div>
+      </section>
+    </div>
+
+    <h2>Key metrics (mock)</h2>
+    <div class="kpi-grid" id="kpis">
+      <div class="kpi">
+        <div class="label">Sessions (24h)</div>
+        <div class="value" data-kpi="sessions">—</div>
+        <div class="delta" data-delta="sessions">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Page views</div>
+        <div class="value" data-kpi="views">—</div>
+        <div class="delta" data-delta="views">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Purchases</div>
+        <div class="value" data-kpi="purchases">—</div>
+        <div class="delta" data-delta="purchases">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Revenue</div>
+        <div class="value" data-kpi="revenue">—</div>
+        <div class="delta" data-delta="revenue">—</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Daily revenue (mock trend)</h2>
+        <button type="button" class="btn" id="refreshBtn">Refresh data</button>
+      </div>
+      <div class="bars" id="bars" role="img" aria-label="Bar chart of daily revenue"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Recent job runs</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>Partition</th>
+            <th>Spark stage</th>
+            <th>Duration</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="runsBody"></tbody>
+      </table>
+    </div>
+
+    <footer>
+      Static prototype for <strong>DSC3219</strong>. Pair with <code>DSC3219_System_Design_Standalone.md</code> for full architecture.
+      Open this file in a browser: <code>dashboard/index.html</code>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const fmtInt = (n) => n.toLocaleString("en-US");
+      const fmtMoney = (n) =>
+        n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+      function tickClock() {
+        const el = document.getElementById("clock");
+        if (el) el.textContent = new Date().toLocaleString("en-US", { hour12: false });
+      }
+
+      function randomBetween(a, b) {
+        return Math.floor(a + Math.random() * (b - a + 1));
+      }
+
+      function generateKpis() {
+        const sessions = randomBetween(12000, 28000);
+        const views = Math.round(sessions * (3.2 + Math.random() * 2));
+        const purchases = randomBetween(400, 1200);
+        const revenue = purchases * randomBetween(35, 95);
+
+        const prev = {
+          sessions: randomBetween(9000, sessions),
+          views: randomBetween(20000, views),
+          purchases: randomBetween(300, purchases),
+          revenue: randomBetween(15000, revenue),
+        };
+
+        return {
+          sessions,
+          views,
+          purchases,
+          revenue,
+          prev,
+        };
+      }
+
+      function pctDelta(cur, old) {
+        if (old <= 0) return 0;
+        return ((cur - old) / old) * 100;
+      }
+
+      function renderKpis(data) {
+        const map = {
+          sessions: { el: "sessions", fmt: fmtInt },
+          views: { el: "views", fmt: fmtInt },
+          purchases: { el: "purchases", fmt: fmtInt },
+          revenue: { el: "revenue", fmt: fmtMoney },
+        };
+        Object.keys(map).forEach((key) => {
+          const cur = data[key];
+          const old = data.prev[key];
+          const d = pctDelta(cur, old);
+          const node = document.querySelector('[data-kpi="' + key + '"]');
+          const delta = document.querySelector('[data-delta="' + key + '"]');
+          if (node) node.textContent = map[key].fmt(cur);
+          if (delta) {
+            const sign = d >= 0 ? "+" : "";
+            delta.textContent = sign + d.toFixed(1) + "% vs prior window";
+            delta.classList.toggle("down", d < 0);
+          }
+        });
+      }
+
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+      function renderBars() {
+        const root = document.getElementById("bars");
+        if (!root) return;
+        root.innerHTML = "";
+        const heights = days.map(() => randomBetween(18, 100));
+        const max = Math.max.apply(null, heights);
+        days.forEach((label, i) => {
+          const col = document.createElement("div");
+          col.className = "bar-col";
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          bar.style.height = Math.round((heights[i] / max) * 120) + "px";
+          const cap = document.createElement("span");
+          cap.textContent = label;
+          col.appendChild(bar);
+          col.appendChild(cap);
+          root.appendChild(col);
+        });
+      }
+
+      function renderRuns() {
+        const body = document.getElementById("runsBody");
+        if (!body) return;
+        const partitions = [
+          "year=2026/month=04/day=10",
+          "year=2026/month=04/day=11",
+          "year=2026/month=04/day=12",
+        ];
+        body.innerHTML = "";
+        for (let i = 0; i < 3; i++) {
+          const tr = document.createElement("tr");
+          const id = "emr-" + randomBetween(10000, 99999);
+          const dur = randomBetween(4, 28) + "m " + randomBetween(0, 59) + "s";
+          const stages = ["map", "shuffle", "reduce", "commit"][randomBetween(0, 3)];
+          const done = Math.random() > 0.25;
+          tr.innerHTML =
+            "<td><code>" +
+            id +
+            "</code></td><td>" +
+            partitions[i] +
+            '</td><td><span class="badge run">' +
+            stages +
+            "</span></td><td>" +
+            dur +
+            '</td><td><span class="badge ' +
+            (done ? "ok" : "run") +
+            '">' +
+            (done ? "succeeded" : "running") +
+            "</span></td>";
+          body.appendChild(tr);
+        }
+      }
+
+      function simulatePipelinePulse() {
+        const seq = [
+          { input: "Receiving", proc: "Queued", res: "Waiting", t: 400 },
+          { input: "Stable", proc: "Running", res: "Staging", t: 900 },
+          { input: "Stable", proc: "Running", res: "Loading", t: 900 },
+          { input: "Stable", proc: "Idle", res: "Ready", t: 400 },
+        ];
+        let i = 0;
+        const pillIn = document.getElementById("pill-input");
+        const pillP = document.getElementById("pill-proc");
+        const pillR = document.getElementById("pill-res");
+        const tIn = document.getElementById("text-input");
+        const tP = document.getElementById("text-proc");
+        const tR = document.getElementById("text-res");
+
+        function step() {
+          const s = seq[i % seq.length];
+          if (tIn) tIn.textContent = s.input;
+          if (tP) tP.textContent = s.proc;
+          if (tR) tR.textContent = s.res;
+          const warn = s.proc === "Queued";
+          pillIn && pillIn.classList.toggle("warn", false);
+          pillP && pillP.classList.toggle("warn", warn);
+          pillR && pillR.classList.toggle("warn", s.res === "Waiting");
+          i++;
+          setTimeout(step, s.t);
+        }
+        step();
+      }
+
+      function refresh() {
+        tickClock();
+        renderKpis(generateKpis());
+        renderBars();
+        renderRuns();
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", refresh);
+
+      refresh();
+      simulatePipelinePulse();
+      setInterval(tickClock, 1000);
+    })();
+  </script>
+</body>
+</html>
